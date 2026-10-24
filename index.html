@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="gu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ઇન્ડેક્સ ATH ટ્રેકર</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Gujarati:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f4f6f3;--card:#fff;--ink:#1d2b26;--mute:#66736d;--line:#dde3de;--ok:#2f7d5b;--mid:#c2850c;--bad:#b83a32;--track:#e6ebe7}
+@media (prefers-color-scheme:dark){:root{--bg:#121a17;--card:#1b2622;--ink:#e8efe9;--mute:#97a69d;--line:#2c3a34;--ok:#4fb88a;--mid:#e0a63a;--bad:#e5645b;--track:#2a3631}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'Noto Sans Gujarati',system-ui,sans-serif;line-height:1.6;padding:16px;max-width:560px;margin-inline:auto}
+h1{font-size:20px;font-weight:800;margin:4px 0 2px}
+.sub{color:var(--mute);font-size:13px;margin:0 0 14px}
+.bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+button,select{font:inherit;font-size:14px;padding:8px 12px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink)}
+button{background:var(--ink);color:var(--bg);border-color:var(--ink);font-weight:600}
+button:disabled{opacity:.5}
+button:focus-visible,select:focus-visible{outline:2px solid var(--ok);outline-offset:2px}
+#st{font-size:13px;color:var(--mute);margin:0 0 14px}
+#st.err{color:var(--bad)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:12px}
+.top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.nm{font-weight:600;font-size:16px}
+.pct{font-size:34px;font-weight:800;line-height:1.1}
+.track{height:10px;background:var(--track);border-radius:6px;margin:12px 0;overflow:hidden}
+.fill{height:100%;border-radius:6px;transition:width .5s}
+.row{display:flex;justify-content:space-between;font-size:14px;padding:3px 0;border-top:1px solid var(--line)}
+.row span:first-child{color:var(--mute)}
+.up{color:var(--ok)}.dn{color:var(--bad)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+.two div{background:var(--bg);border-radius:8px;padding:8px 10px}
+.two small{display:block;font-size:12px;color:var(--mute)}
+.two b{font-size:18px}
+.foot{font-size:12px;color:var(--mute);margin-top:6px}
+@media (prefers-reduced-motion:reduce){.fill{transition:none}}
+</style>
+</head>
+<body>
+<h1>ઇન્ડેક્સ ઑલ ટાઇમ હાઈથી કેટલા નીચે</h1>
+<p class="sub">નિફ્ટી 500 · મિડકેપ 150 · સ્મોલકેપ 250</p>
+<div class="bar">
+  <button id="rf">હમણાં અપડેટ કરો</button>
+  <select id="md" aria-label="ATH ગણતરી">
+    <option value="h">ATH = ઇન્ટ્રાડે હાઈ</option>
+    <option value="c">ATH = ક્લોઝિંગ</option>
+  </select>
+</div>
+<p id="st">લોડ થઈ રહ્યું છે…</p>
+<div id="out"></div>
+<p class="foot">ડેટા: Yahoo Finance. એપ ખુલ્લી હોય ત્યારે માર્કેટ સમયે દર 5 મિનિટે અને બાકીના સમયે દર 6 કલાકે આપમેળે અપડેટ થાય છે; ATH દર વખતે આખા ઇતિહાસમાંથી નવેસરથી ગણાય છે. માત્ર માહિતી માટે.</p>
+
+<script>
+const IDX=[
+ {k:'n5',n:'નિફ્ટી 500',s:['^CRSLDX','NIFTY500.NS']},
+ {k:'md',n:'મિડકેપ 150',s:['NIFTYMIDCAP150.NS','^NIFTYMIDCAP150','NIFTYMID150.NS']},
+ {k:'sm',n:'સ્મોલકેપ 250',s:['NIFTYSMLCAP250.NS','^NIFTYSMLCAP250','NIFTYSML250.NS']}
+];
+// ઑફલાઇન અંદાજ (લાઇવ ડેટા ન મળે ત્યારે)
+const SEED={n5:{cur:21857.75,prev:22072.1,hh:24144.2,hc:24144.2,hhd:null,hcd:null},
+ md:{cur:22358.8,prev:22847.85,hh:23647.5,hc:23647.5,hhd:null,hcd:null},
+ sm:{cur:17028.05,prev:17435.15,hh:18551,hc:18551,hhd:null,hcd:null}};
+const KEY='ath_tracker_v1';
+let D={t:0,live:false,d:SEED,e:{}},mode='h';
+try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(s&&s.d)D=s;mode=localStorage.getItem(KEY+'m')||'h'}catch(e){}
+const $=id=>document.getElementById(id);
+$('md').value=mode;
+
+const fmt=n=>n.toLocaleString('en-IN',{maximumFractionDigits:2});
+const fdate=ts=>ts?new Date(ts*1000).toLocaleDateString('gu-IN',{day:'numeric',month:'short',year:'numeric'}):'—';
+
+async function tf(t){
+  const c=new AbortController(),id=setTimeout(()=>c.abort(),7000);
+  try{return await fetch(t,{cache:'no-store',signal:c.signal})}finally{clearTimeout(id)}
+}
+async function getJSON(u){
+  const u2=u.replace('query1','query2'),e=encodeURIComponent;
+  const tries=[u,u2,'https://api.allorigins.win/raw?url='+e(u),'https://corsproxy.io/?url='+e(u),'https://api.codetabs.com/v1/proxy?quest='+e(u),'https://corsproxy.io/?url='+e(u2)];
+  for(const t of tries){
+    try{const r=await tf(t);if(!r.ok)continue;const j=await r.json();
+      if(j&&j.chart&&j.chart.result&&j.chart.result[0])return j}catch(e){}
+  }
+  return null;
+}
+function proc(j){
+  const r=j.chart.result[0],ts=r.timestamp||[],q=r.indicators.quote[0];
+  let hc=0,hcd=null,hh=0,hhd=null,last=null,prev=null;
+  for(let i=0;i<ts.length;i++){
+    const c=q.close[i],h=q.high[i];
+    if(c==null)continue;
+    prev=last;last=c;
+    if(c>hc){hc=c;hcd=ts[i]}
+    if(h!=null&&h>hh){hh=h;hhd=ts[i]}
+  }
+  const cur=(r.meta&&r.meta.regularMarketPrice)||last;
+  if(cur>hh){hh=cur}
+  if(cur>hc){hc=cur}
+  return{cur,prev,hh,hc,hhd,hcd};
+}
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+async function fetchIdx(x){
+  let last='';
+  for(const sym of x.s){
+    const u='https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(sym)+'?range=max&interval=1d';
+    const j=await getJSON(u);
+    if(!j){last='ઇન્ટરનેટ/સર્વર જવાબ આપતું નથી';break}
+    try{const v=proc(j);if(v&&v.cur&&v.hh)return v}catch(e){}
+    last='આ સિમ્બોલનો ડેટા ખાલી ('+sym+')';
+  }
+  throw new Error(last);
+}
+let busy=false;
+async function load(){
+  if(busy)return;busy=true;
+  const btn=$('rf');btn.disabled=true;
+  $('st').className='';$('st').textContent='અપડેટ થઈ રહ્યું છે…';
+  const nd={},ne={};let ok=0;
+  let J=null;
+  try{const r=await tf('data.json?'+Date.now());if(r.ok)J=await r.json()}catch(e){}
+  await Promise.all(IDX.map(async(x,i)=>{
+    await wait(i*400);
+    const sv=J&&J.d&&J.d[x.k];
+    if(sv&&sv.cur&&sv.hh){nd[x.k]=Object.assign({},sv,{t:J.t});ok++;return}
+    try{nd[x.k]=Object.assign(await fetchIdx(x),{t:Date.now()});ok++}
+    catch(e){ne[x.k]=e.message||'ભૂલ'}
+  }));
+  if(ok>0){
+    D={t:Date.now(),live:ok===IDX.length,d:Object.assign({},D.d,nd),e:ne};
+    try{localStorage.setItem(KEY,JSON.stringify(D))}catch(e){}
+  }else{D.e=ne}
+  render(ok);
+  btn.disabled=false;busy=false;
+}
+function render(ok){
+  const st=$('st');
+  if(ok===0||!D.t){
+    st.className='err';
+    st.textContent=(D.t?'લાઇવ ડેટા મળ્યો નહીં — છેલ્લો સેવ કરેલો ડેટા બતાવ્યો છે ('+new Date(D.t).toLocaleString('gu-IN')+').':'લાઇવ ડેટા મળ્યો નહીં — ફક્ત ઑફલાઇન અંદાજ બતાવ્યો છે. ઇન્ટરનેટ ચેક કરી ફરી અપડેટ કરો.');
+  }else{
+    st.className=D.live?'':'err';
+    st.textContent='છેલ્લું અપડેટ: '+new Date(D.t).toLocaleString('gu-IN')+(D.live?'':' (કેટલાક ઇન્ડેક્સ અપડેટ ન થયા — નીચે જુઓ)');
+  }
+  if(ok===0&&!/^https?:$/.test(location.protocol)){st.textContent+=' ટિપ: ફાઇલ ડાઉનલોડમાંથી ખુલી છે — GitHub Pages (https) લિંકથી ખોલશો તો લાઇવ ડેટા ચાલશે.'}
+  $('out').innerHTML=IDX.map(x=>{
+    const v=D.d[x.k];if(!v)return'';
+    const ath=mode==='h'?v.hh:v.hc,athd=mode==='h'?v.hhd:v.hcd;
+    const dd=Math.max(0,(ath-v.cur)/ath*100);
+    const col=dd<5?'var(--ok)':dd<10?'var(--mid)':'var(--bad)';
+    const ch=v.prev?(v.cur-v.prev)/v.prev*100:null;
+    const days=athd?Math.floor((Date.now()-athd*1000)/864e5):null;
+    const er=D.e&&D.e[x.k];
+    const warn=er?`<p class="foot" style="color:var(--bad);margin:0 0 8px">⚠ આ ઇન્ડેક્સ અપડેટ ન થયો: ${er}. છેલ્લો ડેટા: ${v.t?new Date(v.t).toLocaleString('gu-IN'):'ઑફલાઇન અંદાજ'}</p>`:'';
+    return `<div class="card">${warn}
+      <div class="top"><span class="nm">${x.n}</span><span class="pct" style="color:${col}">−${dd.toFixed(1)}%</span></div>
+      <div class="track" role="img" aria-label="ATH થી ${dd.toFixed(1)}% નીચે"><div class="fill" style="width:${Math.min(100,dd*3)}%;background:${col}"></div></div>
+      <div class="two"><div><small>આજનું (લાઇવ)</small><b>${fmt(v.cur)}</b></div><div><small>ઑલ ટાઇમ હાઈ</small><b>${fmt(ath)}</b></div></div>
+      <div class="row"><span>ATH ની તારીખ</span><b>${fdate(athd)}</b></div>
+      <div class="row"><span>ATH પછી દિવસો</span><b>${days==null?'—':days}</b></div>
+      <div class="row"><span>છેલ્લા સેશનનો ફેરફાર</span><b class="${ch==null?'':ch>=0?'up':'dn'}">${ch==null?'—':(ch>=0?'+':'')+ch.toFixed(2)+'%'}</b></div>
+    </div>`;
+  }).join('');
+}
+// ઓટો અપડેટ: માર્કેટ સમયે 5 મિનિટ, બાકી 6 કલાક
+function inMarket(){
+  const d=new Date(Date.now()+(330+new Date().getTimezoneOffset())*6e4),m=d.getHours()*60+d.getMinutes(),w=d.getDay();
+  return w>0&&w<6&&m>=555&&m<=935;
+}
+function due(){
+  if(!D.t)return true;
+  const age=Date.now()-D.t;
+  return inMarket()?age>5*6e4:age>6*36e5;
+}
+function tick(){if(due())load()}
+$('rf').onclick=load;
+$('md').onchange=e=>{mode=e.target.value;try{localStorage.setItem(KEY+'m',mode)}catch(x){}render(D.t?1:0)};
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)tick()});
+setInterval(tick,6e4);
+render(D.t?1:0);
+tick();
+</script>
+</body>
+</html>
