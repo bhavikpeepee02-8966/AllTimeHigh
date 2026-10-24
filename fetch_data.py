@@ -72,7 +72,8 @@ def proc(j):
             hh, hhd = h, t
     last = rows[-1][1] if rows else None
     prev = rows[-2][1] if len(rows) > 1 else None
-    cur = (r.get('meta') or {}).get('regularMarketPrice') or last
+    # છેલ્લા દૈનિક ક્લોઝ/ભાવને જ આજનો ભાવ ગણો (meta ભાવ ક્યારેક બીજા કોન્ટ્રાક્ટનો હોય છે)
+    cur = last or (r.get('meta') or {}).get('regularMarketPrice')
     if cur > hh:
         hh = cur
     if cur > hc:

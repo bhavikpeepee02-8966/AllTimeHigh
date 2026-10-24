@@ -102,7 +102,7 @@ function proc(j){
     if(hi!=null&&hi>hh){hh=hi;hhd=t}
   }
   const last=rows.length?rows[rows.length-1][1]:null,prev=rows.length>1?rows[rows.length-2][1]:null;
-  const cur=(r.meta&&r.meta.regularMarketPrice)||last;
+  const cur=last||(r.meta&&r.meta.regularMarketPrice);
   if(cur>hh){hh=cur}
   if(cur>hc){hc=cur}
   return{cur,prev,hh,hc,hhd,hcd};
