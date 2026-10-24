@@ -38,7 +38,7 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--ok);outline-of
 </head>
 <body>
 <h1>ઇન્ડેક્સ ઑલ ટાઇમ હાઈથી કેટલા નીચે</h1>
-<p class="sub">નિફ્ટી 50 · નિફ્ટી 500 · મિડકેપ 150 · સ્મોલકેપ 250 · સોનું · ચાંદી · બ્રેન્ટ ક્રૂડ · ડૉલર</p>
+<p class="sub">ભારત · ગિફ્ટ નિફ્ટી · અમેરિકા · સોનું · ચાંદી · બ્રેન્ટ ક્રૂડ · ડૉલર</p>
 <div class="bar">
   <button id="rf">હમણાં અપડેટ કરો</button>
   <select id="md" aria-label="ATH ગણતરી">
@@ -53,9 +53,15 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--ok);outline-of
 <script>
 const IDX=[
  {k:'n50',n:'નિફ્ટી 50',s:['^NSEI','NIFTY50.NS']},
- {k:'n5',n:'નિફ્ટી 500',s:['^CRSLDX','NIFTY500.NS']},
+ {k:'sx',n:'BSE સેન્સેક્સ',s:['^BSESN']},
+  {k:'n5',n:'નિફ્ટી 500',s:['^CRSLDX','NIFTY500.NS']},
  {k:'md',n:'મિડકેપ 150',s:['NIFTYMIDCAP150.NS','^NIFTYMIDCAP150','NIFTYMID150.NS']},
  {k:'sm',n:'સ્મોલકેપ 250',s:['NIFTYSMLCAP250.NS','^NIFTYSMLCAP250','NIFTYSML250.NS']},
+ {k:'vx',n:'India VIX (ડરનો આંક)',s:['^INDIAVIX']},
+ {k:'gf',n:'ગિફ્ટ નિફ્ટી',s:['^NIFTYGIFT','GIFTNIFTY.NS','NIFTYGIFT.NS']},
+ {k:'sp5',n:'અમેરિકા — S&P 500',s:['^GSPC']},
+ {k:'nq',n:'અમેરિકા — નાસ્ડેક',s:['^IXIC']},
+ {k:'dj',n:'અમેરિકા — ડાઉ જોન્સ',s:['^DJI']},
  {k:'gd',n:'સોનું 24K (10 ગ્રામ) — ભુજ/રાજકોટ',s:['GOLDBEES.NS'],m:'gold'},
  {k:'sv',n:'ચાંદી (1 કિલો) — ભુજ/રાજકોટ',s:['SILVERBEES.NS'],m:'silver'},
  {k:'br',n:'ક્રૂડ ઓઇલ — બ્રેન્ટ ($/બૅરલ)',s:['BZ=F']},
@@ -105,7 +111,7 @@ function proc(j){
   const cur=last||(r.meta&&r.meta.regularMarketPrice);
   if(cur>hh){hh=cur}
   if(cur>hc){hc=cur}
-  return{cur,prev,hh,hc,hhd,hcd};
+  return{cur,prev,hh,hc,hhd,hcd,sp:rows.slice(-250).map(r=>+r[1].toFixed(2))};
 }
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
 async function fetchIdx(x){
@@ -154,10 +160,11 @@ function render(ok){
   if(ok===0&&!/^https?:$/.test(location.protocol)){st.textContent+=' ટિપ: ફાઇલ ડાઉનલોડમાંથી ખુલી છે — GitHub Pages (https) લિંકથી ખોલશો તો લાઇવ ડેટા ચાલશે.'}
   const M=D.m||{};
   const rs=n=>n?'₹ '+Number(n).toLocaleString('en-IN'):'—';
+  const spark=(a,c)=>{if(!a||a.length<2)return'';const mn=Math.min(...a),mx=Math.max(...a),W=300,H=44,pts=a.map((y,i)=>(i/(a.length-1)*W).toFixed(1)+','+(H-2-(y-mn)/(mx-mn||1)*(H-4)).toFixed(1)).join(' ');return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="width:100%;height:44px;margin:10px 0 2px;display:block"><polyline points="${pts}" fill="none" stroke="${c}" stroke-width="1.6" vector-effect="non-scaling-stroke"/></svg><small style="opacity:.6">છેલ્લા ~1 વર્ષનો ચાર્ટ</small>`};
   const metal='';
   $('out').innerHTML=metal+IDX.map(x=>{
     let v=D.d[x.k];
-    if(x.m&&v&&M[x.m]){const sc=M[x.m]/v.cur;v=Object.assign({},v,{cur:M[x.m],prev:v.prev?v.prev*sc:v.prev,hh:v.hh*sc,hc:v.hc*sc})}
+    if(x.m&&v&&M[x.m]){const sc=M[x.m]/v.cur;v=Object.assign({},v,{cur:M[x.m],prev:v.prev?v.prev*sc:v.prev,hh:v.hh*sc,hc:v.hc*sc,sp:v.sp&&v.sp.map(z=>+(z*sc).toFixed(2))})}
     else if(x.m)v=null;
     if(!v)return `<div class="card"><div class="top"><span class="nm">${x.n}</span></div><p class="foot" style="margin:8px 0 0">ડેટા કે ભાવ હજી આવ્યો નથી — GitHub માં Actions → update-data → Run workflow ચલાવી 2 મિનિટ પછી Refresh કરો.</p></div>`;
     const ath=mode==='h'?v.hh:v.hc,athd=mode==='h'?v.hhd:v.hcd;
@@ -171,6 +178,7 @@ function render(ok){
     return `<div class="card">${warn}
       <div class="top"><span class="nm">${x.n}</span><span class="pct" style="color:${col}">−${dd.toFixed(1)}%</span></div>
       <div class="track" role="img" aria-label="ATH થી ${dd.toFixed(1)}% નીચે"><div class="fill" style="width:${Math.min(100,dd*3)}%;background:${col}"></div></div>
+      ${spark(v.sp,col)}
       <div class="two"><div><small>આજનું (લાઇવ)</small><b>${fmt(v.cur)}</b></div><div><small>ઑલ ટાઇમ હાઈ</small><b>${fmt(ath)}</b></div></div>
       <div class="row"><span>ATH ની તારીખ</span><b>${fdate(athd)}</b></div>
       <div class="row"><span>ATH પછી દિવસો</span><b>${days==null?'—':days}</b></div>

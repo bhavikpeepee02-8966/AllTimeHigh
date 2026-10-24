@@ -2,6 +2,12 @@ import json, os, re, sys, time, urllib.request, urllib.parse
 
 IDX = {
     'n50': ['^NSEI', 'NIFTY50.NS'],
+    'sx': ['^BSESN'],
+    'vx': ['^INDIAVIX'],
+    'gf': ['^NIFTYGIFT', 'GIFTNIFTY.NS', 'NIFTYGIFT.NS'],
+    'sp5': ['^GSPC'],
+    'nq': ['^IXIC'],
+    'dj': ['^DJI'],
     # સોના-ચાંદીનો ATH: ભારતીય ભાવ સાથે ચાલતા ETF પરથી
     'gd': ['GOLDBEES.NS'],
     'sv': ['SILVERBEES.NS'],
@@ -78,7 +84,8 @@ def proc(j):
         hh = cur
     if cur > hc:
         hc = cur
-    return {'cur': cur, 'prev': prev, 'hh': hh, 'hc': hc, 'hhd': hhd, 'hcd': hcd}
+    sp = [round(x[1], 2) for x in rows[-250:]]
+    return {'cur': cur, 'prev': prev, 'hh': hh, 'hc': hc, 'hhd': hhd, 'hcd': hcd, 'sp': sp}
 
 
 def page_text(url):
