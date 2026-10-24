@@ -84,14 +84,19 @@ async function getJSON(u){
 }
 function proc(j){
   const r=j.chart.result[0],ts=r.timestamp||[],q=r.indicators.quote[0];
-  let hc=0,hcd=null,hh=0,hhd=null,last=null,prev=null;
+  const rows=[];
   for(let i=0;i<ts.length;i++){
-    const c=q.close[i],h=q.high[i];
+    const c=q.close[i],hi=q.high[i];
     if(c==null)continue;
-    prev=last;last=c;
-    if(c>hc){hc=c;hcd=ts[i]}
-    if(h!=null&&h>hh){hh=h;hhd=ts[i]}
+    const day=Math.floor((ts[i]+19800)/86400),L=rows[rows.length-1];
+    if(L&&L[0]===day){L[1]=c;L[2]=Math.max(L[2]||0,hi||0)}else rows.push([day,c,hi,ts[i]]);
   }
+  let hc=0,hcd=null,hh=0,hhd=null;
+  for(const [d,c,hi,t] of rows){
+    if(c>hc){hc=c;hcd=t}
+    if(hi!=null&&hi>hh){hh=hi;hhd=t}
+  }
+  const last=rows.length?rows[rows.length-1][1]:null,prev=rows.length>1?rows[rows.length-2][1]:null;
   const cur=(r.meta&&r.meta.regularMarketPrice)||last;
   if(cur>hh){hh=cur}
   if(cur>hc){hc=cur}
@@ -101,7 +106,7 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
 async function fetchIdx(x){
   let last='';
   for(const sym of x.s){
-    const u='https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(sym)+'?range=max&interval=1d';
+    const u='https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(sym)+'?period1=946684800&period2='+(Math.floor(Date.now()/1000)+86400)+'&interval=1d';
     const j=await getJSON(u);
     if(!j){last='ઇન્ટરનેટ/સર્વર જવાબ આપતું નથી';break}
     try{const v=proc(j);if(v&&v.cur&&v.hh)return v}catch(e){}
