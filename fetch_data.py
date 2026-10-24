@@ -1,6 +1,10 @@
-import json, os, sys, time, urllib.request, urllib.parse
+import json, os, re, sys, time, urllib.request, urllib.parse
 
 IDX = {
+    'n50': ['^NSEI', 'NIFTY50.NS'],
+    # સોના-ચાંદીનો ATH: ભારતીય ભાવ સાથે ચાલતા ETF પરથી
+    'gd': ['GOLDBEES.NS'],
+    'sv': ['SILVERBEES.NS'],
     'n5': ['^CRSLDX', 'NIFTY500.NS'],
     'md': ['NIFTYMIDCAP150.NS', '^NIFTYMIDCAP150', 'NIFTYMID150.NS'],
     'sm': ['NIFTYSMLCAP250.NS', '^NIFTYSMLCAP250', 'NIFTYSML250.NS'],
@@ -74,6 +78,48 @@ def proc(j):
     return {'cur': cur, 'prev': prev, 'hh': hh, 'hc': hc, 'hhd': hhd, 'hcd': hcd}
 
 
+def page_text(url):
+    req = urllib.request.Request(url, headers=dict(UA, **{'Accept-Language': 'en-IN,en;q=0.9'}))
+    with urllib.request.urlopen(req, timeout=30) as r:
+        html = r.read().decode('utf-8', 'ignore')
+    html = re.sub(r'(?is)<(script|style).*?</\1>', ' ', html)
+    return re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', ' ', html))
+
+
+def num(x):
+    return int(x.replace(',', ''))
+
+
+def first_ok(urls, pat):
+    for u in urls:
+        try:
+            t = page_text(u)
+            x = re.search(pat, t)
+            if x:
+                dt = re.search(r'Updated on\s*(\d{1,2} \w+,? \d{4})', t)
+                return num(x.group(1)), (dt.group(1) if dt else ''), u
+        except Exception as e:
+            print('fail', u, e)
+    return None
+
+
+def fetch_metals():
+    # ભુજનો ભાવ રાજકોટ મુજબ ચાલે છે, એટલે પહેલાં રાજકોટ, ન મળે તો ભુજ
+    m = {}
+    g = first_ok(['https://www.bankbazaar.com/gold-rate-rajkot.html',
+                  'https://www.bankbazaar.com/gold-rate-bhuj.html'],
+                 r'24 Carat Gold Rate in \w+.*?10 grams?\s*\u20b9\s*([\d,]+)')
+    if g:
+        m['gold'], m['gold_date'], m['gold_src'] = g
+    sv = first_ok(['https://www.bankbazaar.com/silver-rate-rajkot.html',
+                   'https://www.bankbazaar.com/silver-rate-bhuj.html'],
+                  r'1 kg\s*\u20b9\s*([\d,]+)')
+    if sv:
+        m['silver'], m['silver_date'], m['silver_src'] = sv
+    print('metals', m)
+    return m
+
+
 def main():
     old = {}
     if os.path.exists('data.json'):
@@ -109,7 +155,15 @@ def main():
             print('FAIL', k)
     if ok == 0:
         sys.exit(1)
-    json.dump({'t': int(time.time() * 1000), 'd': d}, open('data.json', 'w'))
+    oldm = {}
+    if os.path.exists('data.json'):
+        try:
+            oldm = json.load(open('data.json')).get('m', {})
+        except Exception:
+            pass
+    m = dict(oldm)
+    m.update(fetch_metals())
+    json.dump({'t': int(time.time() * 1000), 'd': d, 'm': m}, open('data.json', 'w'))
 
 
 main()
