@@ -84,19 +84,27 @@ def main():
     d = dict(old)
     ok = 0
     for k, syms in IDX.items():
+        best = None
         for s in syms:
             j = get(s)
             if not j:
                 continue
             try:
                 v = proc(j)
-                if v['cur'] and v['hh']:
-                    d[k] = v
-                    ok += 1
-                    print('OK', k, s, v['cur'])
+                if not (v['cur'] and v['hh']):
+                    continue
+                v['daily'] = is_daily(j)
+                v['sym'] = s
+                print('OK', k, s, v['cur'], 'daily' if v['daily'] else 'NOT-DAILY')
+                if v['daily']:
+                    best = v
                     break
+                best = best or v
             except Exception as e:
                 print('  parse fail', s, e)
+        if best:
+            d[k] = best
+            ok += 1
         else:
             print('FAIL', k)
     if ok == 0:

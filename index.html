@@ -154,7 +154,8 @@ function render(ok){
     const ch=v.prev?(v.cur-v.prev)/v.prev*100:null;
     const days=athd?Math.floor((Date.now()-athd*1000)/864e5):null;
     const er=D.e&&D.e[x.k];
-    const warn=er?`<p class="foot" style="color:var(--bad);margin:0 0 8px">⚠ આ ઇન્ડેક્સ અપડેટ ન થયો: ${er}. છેલ્લો ડેટા: ${v.t?new Date(v.t).toLocaleString('gu-IN'):'ઑફલાઇન અંદાજ'}</p>`:'';
+    const mon=(v.daily===false)?`<p class="foot" style="color:var(--bad);margin:0 0 8px">⚠ આ ઇન્ડેક્સનો ડેટા માસિક મળ્યો છે — ATH ની તારીખ, દિવસો અને સેશન ફેરફાર ખોટા હોઈ શકે. ટકા અને ભાવ આશરે સાચા છે.</p>`:'';
+    const warn=mon+(er?`<p class="foot" style="color:var(--bad);margin:0 0 8px">⚠ આ ઇન્ડેક્સ અપડેટ ન થયો: ${er}. છેલ્લો ડેટા: ${v.t?new Date(v.t).toLocaleString('gu-IN'):'ઑફલાઇન અંદાજ'}</p>`:'');
     return `<div class="card">${warn}
       <div class="top"><span class="nm">${x.n}</span><span class="pct" style="color:${col}">−${dd.toFixed(1)}%</span></div>
       <div class="track" role="img" aria-label="ATH થી ${dd.toFixed(1)}% નીચે"><div class="fill" style="width:${Math.min(100,dd*3)}%;background:${col}"></div></div>
