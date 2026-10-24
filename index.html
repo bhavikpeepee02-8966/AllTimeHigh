@@ -38,7 +38,7 @@ button:focus-visible,select:focus-visible{outline:2px solid var(--ok);outline-of
 </head>
 <body>
 <h1>ઇન્ડેક્સ ઑલ ટાઇમ હાઈથી કેટલા નીચે</h1>
-<p class="sub">નિફ્ટી 50 · નિફ્ટી 500 · મિડકેપ 150 · સ્મોલકેપ 250</p>
+<p class="sub">નિફ્ટી 50 · નિફ્ટી 500 · મિડકેપ 150 · સ્મોલકેપ 250 · સોનું · ચાંદી · ક્રૂડ · ડૉલર</p>
 <div class="bar">
   <button id="rf">હમણાં અપડેટ કરો</button>
   <select id="md" aria-label="ATH ગણતરી">
@@ -55,7 +55,11 @@ const IDX=[
  {k:'n50',n:'નિફ્ટી 50',s:['^NSEI','NIFTY50.NS']},
  {k:'n5',n:'નિફ્ટી 500',s:['^CRSLDX','NIFTY500.NS']},
  {k:'md',n:'મિડકેપ 150',s:['NIFTYMIDCAP150.NS','^NIFTYMIDCAP150','NIFTYMID150.NS']},
- {k:'sm',n:'સ્મોલકેપ 250',s:['NIFTYSMLCAP250.NS','^NIFTYSMLCAP250','NIFTYSML250.NS']}
+ {k:'sm',n:'સ્મોલકેપ 250',s:['NIFTYSMLCAP250.NS','^NIFTYSMLCAP250','NIFTYSML250.NS']},
+ {k:'gd',n:'સોનું 24K (10 ગ્રામ) — ભુજ/રાજકોટ',s:['GOLDBEES.NS'],m:'gold'},
+ {k:'sv',n:'ચાંદી (1 કિલો) — ભુજ/રાજકોટ',s:['SILVERBEES.NS'],m:'silver'},
+ {k:'cr',n:'ક્રૂડ ઓઇલ (WTI, $/બૅરલ)',s:['CL=F','BZ=F']},
+ {k:'fx',n:'ડૉલર / રૂપિયા (USD/INR)',s:['INR=X']}
 ];
 // ઑફલાઇન અંદાજ (લાઇવ ડેટા ન મળે ત્યારે)
 const SEED={n5:{cur:21857.75,prev:22072.1,hh:24144.2,hc:24144.2,hhd:null,hcd:null},
@@ -150,12 +154,12 @@ function render(ok){
   if(ok===0&&!/^https?:$/.test(location.protocol)){st.textContent+=' ટિપ: ફાઇલ ડાઉનલોડમાંથી ખુલી છે — GitHub Pages (https) લિંકથી ખોલશો તો લાઇવ ડેટા ચાલશે.'}
   const M=D.m||{};
   const rs=n=>n?'₹ '+Number(n).toLocaleString('en-IN'):'—';
-  const ddm=k=>{const v=D.d[k];if(!v)return'<small>ATH ડેટા આવ્યો નથી</small>';const a=mode==='h'?v.hh:v.hc,d=Math.max(0,(a-v.cur)/a*100);return `<small style="color:${d<5?'var(--ok)':d<10?'var(--mid)':'var(--bad)'}">ઑલ ટાઇમ હાઈથી −${d.toFixed(1)}%</small>`};
-  const metal=`<div class="card"><div class="top"><span class="nm">ભુજ (રાજકોટ ભાવ મુજબ) — સોનું / ચાંદી</span></div>
-      <div class="two"><div><small>સોનું 24K (10 ગ્રામ)</small><b>${rs(M.gold)}</b>${ddm('gd')}</div><div><small>ચાંદી (1 કિલો)</small><b>${rs(M.silver)}</b>${ddm('sv')}</div></div>
-      <p class="foot" style="margin:8px 0 0">સોનું: ${M.gold_date||'—'} · ચાંદી: ${M.silver_date||'—'}. ${(M.gold||M.silver)?'સ્થાનિક સોની બજારથી થોડો ફરક હોઈ શકે. ATH થી % સોના-ચાંદીના ETF (GOLDBEES, SILVERBEES) પરથી ગણેલ આશરે આંકડો છે.':'ભાવ હજી મળ્યો નથી — GitHub માં Actions → update-data → Run workflow ચલાવો. ફરી પણ ન આવે તો સોર્સ પેજ ખુલ્યું નથી.'}</p></div>`;
+  const metal='';
   $('out').innerHTML=metal+IDX.map(x=>{
-    const v=D.d[x.k];if(!v)return `<div class="card"><div class="top"><span class="nm">${x.n}</span></div><p class="foot" style="margin:8px 0 0">ડેટા હજી આવ્યો નથી — GitHub માં Actions → update-data → Run workflow ચલાવી 2 મિનિટ પછી Refresh કરો.</p></div>`;
+    let v=D.d[x.k];
+    if(x.m&&v&&M[x.m]){const sc=M[x.m]/v.cur;v=Object.assign({},v,{cur:M[x.m],prev:v.prev?v.prev*sc:v.prev,hh:v.hh*sc,hc:v.hc*sc})}
+    else if(x.m)v=null;
+    if(!v)return `<div class="card"><div class="top"><span class="nm">${x.n}</span></div><p class="foot" style="margin:8px 0 0">ડેટા કે ભાવ હજી આવ્યો નથી — GitHub માં Actions → update-data → Run workflow ચલાવી 2 મિનિટ પછી Refresh કરો.</p></div>`;
     const ath=mode==='h'?v.hh:v.hc,athd=mode==='h'?v.hhd:v.hcd;
     const dd=Math.max(0,(ath-v.cur)/ath*100);
     const col=dd<5?'var(--ok)':dd<10?'var(--mid)':'var(--bad)';
@@ -171,6 +175,7 @@ function render(ok){
       <div class="row"><span>ATH ની તારીખ</span><b>${fdate(athd)}</b></div>
       <div class="row"><span>ATH પછી દિવસો</span><b>${days==null?'—':days}</b></div>
       <div class="row"><span>છેલ્લા સેશનનો ફેરફાર</span><b class="${ch==null?'':ch>=0?'up':'dn'}">${ch==null?'—':(ch>=0?'+':'')+ch.toFixed(2)+'%'}</b></div>
+      ${x.m?`<p class="foot" style="margin:8px 0 0">ભાવ: BankBazaar (રાજકોટ) · ${M[x.m+'_date']||''}. ATH અને તારીખ ETF (GOLDBEES/SILVERBEES) પરથી — આશરે આંકડો.</p>`:''}
     </div>`;
   }).join('');
 }

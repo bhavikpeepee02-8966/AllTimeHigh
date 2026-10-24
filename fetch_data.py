@@ -5,6 +5,8 @@ IDX = {
     # સોના-ચાંદીનો ATH: ભારતીય ભાવ સાથે ચાલતા ETF પરથી
     'gd': ['GOLDBEES.NS'],
     'sv': ['SILVERBEES.NS'],
+    'cr': ['CL=F', 'BZ=F'],
+    'fx': ['INR=X'],
     'n5': ['^CRSLDX', 'NIFTY500.NS'],
     'md': ['NIFTYMIDCAP150.NS', '^NIFTYMIDCAP150', 'NIFTYMID150.NS'],
     'sm': ['NIFTYSMLCAP250.NS', '^NIFTYSMLCAP250', 'NIFTYSML250.NS'],
